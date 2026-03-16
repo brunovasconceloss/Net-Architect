@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Net Architect</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles/variables.css">
+  <link rel="stylesheet" href="styles/reset.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/responsive.css">
+</head>
+<body>
+  <!-- Sidebar backdrop (mobile) -->
+  <div id="sidebar-backdrop"></div>
+
+  <div id="app">
+    <!-- ── Sidebar ────────────────────────────── -->
+    <aside id="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
+        </svg>
+        <span class="logo-text">NET ARCHITECT</span>
+      </div>
+
+      <nav id="main-nav">
+        <a href="#planning" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span class="nav-label">Planning</span>
+        </a>
+        <a href="#architecture" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/>
+            <circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/>
+            <line x1="12" y1="7" x2="19" y2="17"/>
+          </svg>
+          <span class="nav-label">Architecture</span>
+        </a>
+        <a href="#tools" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <span class="nav-label">Tools</span>
+        </a>
+        <a href="#testing" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span class="nav-label">Testing</span>
+        </a>
+        <a href="#about" class="nav-link">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <span class="nav-label">About</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        v<span id="app-version">1.0.0</span>
+      </div>
+    </aside>
+
+    <!-- ── Main ───────────────────────────────── -->
+    <div id="main-content">
+      <header id="topbar">
+        <button id="hamburger-btn" aria-label="Toggle sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <span id="topbar-title">NET ARCHITECT</span>
+        <span id="topbar-status" id="topbar-platform"></span>
+      </header>
+
+      <main id="view-container">
+        <!-- Views are rendered here by router.js -->
+        <div id="loading-screen">
+          <div style="text-align:center; padding: 64px; color: var(--text-muted); font-family: var(--font-mono);">
+            <div class="spinner" style="width:32px;height:32px;margin:0 auto 16px;"></div>
+            <div>INITIALIZING...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- App entry point -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

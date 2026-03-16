@@ -1,0 +1,68 @@
+/* Net Architect — Responsive */
+
+/* ── Tablet ────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Mobile / Hamburger ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal), width var(--transition-normal);
+    z-index: var(--z-overlay);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+
+  #sidebar.mobile-open {
+    transform: translateX(0);
+    width: var(--sidebar-width);
+  }
+
+  /* Backdrop when sidebar is open */
+  #sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: calc(var(--z-overlay) - 1);
+    backdrop-filter: blur(2px);
+  }
+
+  #sidebar-backdrop.visible {
+    display: block;
+  }
+
+  #main-content {
+    width: 100%;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-auto {
+    grid-template-columns: 1fr;
+  }
+
+  #view-container {
+    padding: var(--space-md);
+  }
+
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+}
+
+/* ── Very small ────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .page-title { font-size: 1.1rem; }
+  .terminal { font-size: 0.72rem; }
+}
