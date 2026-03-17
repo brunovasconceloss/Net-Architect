@@ -83,7 +83,19 @@
           </svg>
         </button>
         <span id="topbar-title">NET ARCHITECT</span>
-        <span id="topbar-status" id="topbar-platform"></span>
+
+        <div id="topbar-right">
+          <span id="topbar-platform" class="topbar-badge"></span>
+          <div class="topbar-sep"></div>
+          <div id="topbar-public-ip" class="topbar-ip" title="Click to copy public IP">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;flex-shrink:0">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span id="topbar-ip-value">fetching...</span>
+          </div>
+        </div>
       </header>
 
       <main id="view-container">

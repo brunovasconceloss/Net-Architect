@@ -66,22 +66,6 @@ contextBridge.exposeInMainWorld('netAPI', {
     },
   },
 
-  // Packet Capture
-  tcpdump: {
-    start: (iface, filter) => ipcRenderer.invoke('tcpdump:start', iface, filter),
-    stop: () => ipcRenderer.invoke('tcpdump:stop'),
-    onData: (cb) => {
-      const handler = (_e, data) => cb(data);
-      ipcRenderer.on('tcpdump:data', handler);
-      return () => ipcRenderer.removeListener('tcpdump:data', handler);
-    },
-    onStopped: (cb) => {
-      const handler = (_e, data) => cb(data);
-      ipcRenderer.on('tcpdump:stopped', handler);
-      return () => ipcRenderer.removeListener('tcpdump:stopped', handler);
-    },
-  },
-
   // HTTP / DNS
   http: {
     request: (url, method) => ipcRenderer.invoke('http:request', url, method),

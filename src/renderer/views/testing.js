@@ -22,7 +22,6 @@ export function render() {
       <button class="tab-btn" data-tab="traceroute">Traceroute</button>
       <button class="tab-btn" data-tab="bulk-ping">Bulk Ping</button>
       <button class="tab-btn" data-tab="tcp-ping">TCP Ping</button>
-      <button class="tab-btn" data-tab="capture">Capture</button>
       <button class="tab-btn" data-tab="http-dns">HTTP / DNS</button>
       <button class="tab-btn" data-tab="iperf">iPerf3</button>
     </div>
@@ -38,9 +37,6 @@ export function render() {
 
     <!-- TCP Ping -->
     <div class="tab-panel" id="tab-tcp-ping"></div>
-
-    <!-- Capture -->
-    <div class="tab-panel" id="tab-capture"></div>
 
     <!-- HTTP / DNS -->
     <div class="tab-panel" id="tab-http-dns"></div>
@@ -63,7 +59,6 @@ export function render() {
   buildTracerouteTab(el.querySelector('#tab-traceroute'));
   buildBulkPingTab(el.querySelector('#tab-bulk-ping'));
   buildTCPPingTab(el.querySelector('#tab-tcp-ping'));
-  buildCaptureTab(el.querySelector('#tab-capture'));
   buildHTTPDNSTab(el.querySelector('#tab-http-dns'));
   buildIperfTab(el.querySelector('#tab-iperf'));
 
@@ -334,81 +329,6 @@ function buildTCPPingTab(container) {
     } catch (err) {
       term.append(`Error: ${err.message}`, 'error');
     }
-  });
-}
-
-// ── Capture Tab ───────────────────────────────────────────────────────
-function buildCaptureTab(container) {
-  const term = new TerminalOutput();
-  let capturing = false;
-
-  container.innerHTML = `
-    <div class="panel" style="margin-bottom:var(--space-md)">
-      <p class="panel-title">Packet Capture</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div class="form-group" style="flex:1;min-width:120px;margin:0">
-          <label class="form-label">Interface</label>
-          <input class="form-input" id="cap-iface" placeholder="eth0" value="eth0">
-        </div>
-        <div class="form-group" style="flex:2;min-width:180px;margin:0">
-          <label class="form-label">BPF Filter (optional)</label>
-          <input class="form-input" id="cap-filter" placeholder="tcp port 80">
-        </div>
-        <button class="btn btn-success" id="cap-start-btn">START</button>
-        <button class="btn btn-danger" id="cap-stop-btn" disabled>STOP</button>
-      </div>
-      <div id="cap-status" style="margin-top:8px;font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono)"></div>
-    </div>
-    <div class="panel">
-      <p class="panel-title">Captured Packets</p>
-      <div id="cap-term-mount"></div>
-    </div>
-  `;
-
-  container.querySelector('#cap-term-mount').appendChild(term.el);
-  const startBtn = container.querySelector('#cap-start-btn');
-  const stopBtn = container.querySelector('#cap-stop-btn');
-  const statusEl = container.querySelector('#cap-status');
-
-  startBtn.addEventListener('click', async () => {
-    if (!hasAPI()) { noAPIMsg(container); return; }
-    const iface = container.querySelector('#cap-iface').value.trim();
-    const filter = container.querySelector('#cap-filter').value.trim();
-    if (!iface) { showToast('Enter interface name', 'warning'); return; }
-
-    term.clear();
-    capturing = true;
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-    statusEl.textContent = '● Capturing...';
-
-    const removeData = window.netAPI.tcpdump.onData(({ line, error }) => {
-      term.append(line, error ? 'warning' : 'default');
-    });
-    const removeStopped = window.netAPI.tcpdump.onStopped(({ pcapPath }) => {
-      removeData(); removeStopped();
-      capturing = false;
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      statusEl.textContent = `● Capture saved: ${pcapPath}`;
-      showToast('Capture stopped', 'info');
-    });
-
-    try {
-      const result = await window.netAPI.tcpdump.start(iface, filter);
-      statusEl.textContent = `● Capturing on ${iface} → ${result.pcapPath}`;
-    } catch (err) {
-      capturing = false;
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      statusEl.textContent = '';
-      term.append(`Error: ${err.message}`, 'error');
-    }
-  });
-
-  stopBtn.addEventListener('click', async () => {
-    if (!hasAPI()) return;
-    try { await window.netAPI.tcpdump.stop(); } catch (err) { showToast(err.message, 'error'); }
   });
 }
 

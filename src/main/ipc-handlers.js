@@ -8,7 +8,6 @@ const ping = require('./tools/ping');
 const traceroute = require('./tools/traceroute');
 const fping = require('./tools/fping');
 const tcpping = require('./tools/tcpping');
-const tcpdump = require('./tools/tcpdump');
 const httpTools = require('./tools/http-tools');
 const iperf = require('./tools/iperf');
 
@@ -81,24 +80,6 @@ function register() {
         (result) => { send('tcpping:result', result); resolve(result); }
       );
     });
-  });
-
-  // ── Packet Capture ──────────────────────────────────────────────────
-  ipcMain.handle('tcpdump:start', (_e, iface, filter) => {
-    const safeIface = security.sanitizeIface(iface);
-    const safeFilter = filter ? security.sanitizeFilter(filter) : '';
-    const { pcapPath } = tcpdump.startCapture(
-      safeIface,
-      safeFilter,
-      (data) => send('tcpdump:data', data)
-    );
-    return { pcapPath };
-  });
-
-  ipcMain.handle('tcpdump:stop', () => {
-    const result = tcpdump.stopCapture();
-    send('tcpdump:stopped', result);
-    return result;
   });
 
   // ── HTTP / DNS ──────────────────────────────────────────────────────

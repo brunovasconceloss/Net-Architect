@@ -2,7 +2,7 @@
  * Planning view — Subnet Calculator (IPv4/IPv6) + VLSM Planner.
  */
 
-import { parseIPv4, validateIPv4 } from '../lib/ipv4.js';
+import { parseIPv4, validateIPv4, splitPrefix } from '../lib/ipv4.js';
 import { parseIPv6, validateIPv6 } from '../lib/ipv6.js';
 import { calculateVLSM } from '../lib/vlsm.js';
 import { createCopyButton } from '../components/copy-button.js';
@@ -39,7 +39,10 @@ export function render() {
         </div>
 
         <div class="panel" id="ipv4-result-panel" style="display:none">
-          <p class="panel-title">Results</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <p class="panel-title" style="margin:0">Results</p>
+            <div id="ipv4-result-actions" style="display:flex;gap:6px"></div>
+          </div>
           <div id="ipv4-result-content"></div>
         </div>
       </div>
@@ -113,6 +116,7 @@ export function render() {
   const ipv4CalcBtn = el.querySelector('#ipv4-calc-btn');
   const ipv4ResultPanel = el.querySelector('#ipv4-result-panel');
   const ipv4ResultContent = el.querySelector('#ipv4-result-content');
+  const ipv4ResultActions = el.querySelector('#ipv4-result-actions');
 
   function calcIPv4() {
     const val = ipv4Input.value.trim();
@@ -124,6 +128,14 @@ export function render() {
       const info = parseIPv4(val);
       renderIPv4Result(info, ipv4ResultContent);
       ipv4ResultPanel.style.display = '';
+
+      // Copy + export actions
+      ipv4ResultActions.innerHTML = '';
+      ipv4ResultActions.appendChild(createCopyButton(() => formatIPv4ForCopy(info)));
+      ipv4ResultActions.appendChild(createExportMenu({
+        getData: () => [formatIPv4ForExport(info)],
+        filename: `subnet-${info.networkAddress}-${info.prefix}`,
+      }));
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -131,6 +143,40 @@ export function render() {
 
   ipv4CalcBtn.addEventListener('click', calcIPv4);
   ipv4Input.addEventListener('keydown', e => { if (e.key === 'Enter') calcIPv4(); });
+
+  function formatIPv4ForCopy(info) {
+    return [
+      `IP Address:       ${info.ip}`,
+      `CIDR:             ${info.cidr}`,
+      `Network Address:  ${info.networkAddress}`,
+      `Broadcast:        ${info.broadcastAddress}`,
+      `Subnet Mask:      ${info.subnetMask}`,
+      `Wildcard Mask:    ${info.wildcardMask}`,
+      `First Host:       ${info.firstHost}`,
+      `Last Host:        ${info.lastHost}`,
+      `Usable Hosts:     ${info.usableHosts.toLocaleString()}`,
+      `Total Hosts:      ${info.totalHosts.toLocaleString()}`,
+      `IP Class:         ${info.ipClass}`,
+      `Private:          ${info.isPrivate ? 'Yes' : 'No'}`,
+    ].join('\n');
+  }
+
+  function formatIPv4ForExport(info) {
+    return {
+      'IP Address': info.ip,
+      'CIDR': info.cidr,
+      'Network Address': info.networkAddress,
+      'Broadcast Address': info.broadcastAddress,
+      'Subnet Mask': info.subnetMask,
+      'Wildcard Mask': info.wildcardMask,
+      'First Host': info.firstHost,
+      'Last Host': info.lastHost,
+      'Usable Hosts': info.usableHosts,
+      'Total Hosts': info.totalHosts,
+      'IP Class': info.ipClass,
+      'Private': info.isPrivate ? 'Yes' : 'No',
+    };
+  }
 
   function renderIPv4Result(info, container) {
     const rows = [
@@ -148,6 +194,17 @@ export function render() {
       { k: 'Private',           v: info.isPrivate ? 'Yes' : 'No' },
     ];
 
+    // Build split prefix options
+    const prefixOptions = [];
+    for (let p = info.prefix + 1; p <= 30; p++) {
+      const count = Math.pow(2, p - info.prefix);
+      const hostsEach = Math.max(0, Math.pow(2, 32 - p) - 2);
+      prefixOptions.push(
+        `<option value="${p}">/${p} — ${count.toLocaleString()} subnets, ${hostsEach.toLocaleString()} hosts each</option>`
+      );
+    }
+    const hasSplit = info.prefix < 30;
+
     container.innerHTML = `
       <table class="data-table">
         <tbody>
@@ -160,6 +217,94 @@ export function render() {
           IP:   ${info.binaryIP}<br>
           Mask: ${info.binaryMask}
         </div>
+      </div>
+      ${hasSplit ? `
+      <div style="margin-top:16px;border-top:1px solid var(--border-subtle);padding-top:16px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <p class="panel-title" style="margin:0;font-size:0.75rem">Split Network</p>
+          <select class="form-select" id="split-prefix-sel" style="width:auto;min-width:270px">
+            ${prefixOptions.join('')}
+          </select>
+          <button class="btn btn-primary" id="split-do-btn">SPLIT</button>
+          <div id="split-export-slot" style="display:flex;gap:6px"></div>
+        </div>
+        <div id="split-results-area"></div>
+      </div>
+      ` : ''}
+    `;
+
+    if (hasSplit) {
+      container.querySelector('#split-do-btn').addEventListener('click', () => {
+        const targetPrefix = parseInt(container.querySelector('#split-prefix-sel').value);
+        try {
+          const { subnets, total, shown } = splitPrefix(info.cidr, targetPrefix);
+          renderSplitResults(subnets, total, shown,
+            container.querySelector('#split-results-area'),
+            container.querySelector('#split-export-slot'));
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+  }
+
+  function renderSplitResults(subnets, total, shown, area, slot) {
+    slot.innerHTML = '';
+    slot.appendChild(createCopyButton(() =>
+      ['#\tCIDR\tNetwork\tBroadcast\tFirst Host\tLast Host\tUsable Hosts',
+        ...subnets.map(s => `${s.index}\t${s.cidr}\t${s.networkAddress}\t${s.broadcastAddress}\t${s.firstHost}\t${s.lastHost}\t${s.usableHosts}`)
+      ].join('\n')
+    ));
+    slot.appendChild(createExportMenu({
+      getData: () => subnets.map(s => ({
+        '#': s.index,
+        'CIDR': s.cidr,
+        'Network': s.networkAddress,
+        'Broadcast': s.broadcastAddress,
+        'First Host': s.firstHost,
+        'Last Host': s.lastHost,
+        'Usable Hosts': s.usableHosts,
+      })),
+      filename: `split-${subnets[0]?.cidr.replace('/', '_')}`,
+    }));
+
+    area.innerHTML = `
+      ${total > shown ? `
+        <div style="padding:6px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:4px;margin-bottom:8px;font-size:0.75rem;font-family:var(--font-mono);color:var(--amber-bright)">
+          Showing first ${shown.toLocaleString()} of ${total.toLocaleString()} subnets
+        </div>
+      ` : `
+        <div style="margin-bottom:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--text-muted)">
+          ${total.toLocaleString()} subnet${total !== 1 ? 's' : ''} total
+        </div>
+      `}
+      <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-md)">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>CIDR</th>
+              <th>Network</th>
+              <th>Broadcast</th>
+              <th>First Host</th>
+              <th>Last Host</th>
+              <th>Usable</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${subnets.map(s => `
+              <tr>
+                <td style="color:var(--text-muted)">${s.index}</td>
+                <td style="color:var(--cyan-bright);font-weight:600">${s.cidr}</td>
+                <td>${s.networkAddress}</td>
+                <td>${s.broadcastAddress}</td>
+                <td>${s.firstHost}</td>
+                <td>${s.lastHost}</td>
+                <td>${s.usableHosts.toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
   }

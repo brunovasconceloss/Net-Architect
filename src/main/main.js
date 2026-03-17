@@ -35,7 +35,7 @@ function createWindow() {
           "style-src 'self' 'unsafe-inline'; " +
           "font-src 'self' data:; " +
           "img-src 'self' data:; " +
-          "connect-src 'none';"
+          "connect-src https://api.ipify.org https://api4.my-ip.io https://ipv4.icanhazip.com;"
         ],
       },
     });

@@ -50,14 +50,14 @@ export function calculateVLSM(baseNetwork, segments) {
       continue;
     }
 
-    // Find the smallest prefix that fits
-    let prefix = 30;
-    let blockSize = 4;
+    // Find the smallest prefix that accommodates seg.hosts usable addresses.
+    // Iterate from /30 downward (larger subnets) and stop at the first fit.
+    let prefix = 0;
+    let blockSize = Math.pow(2, 32);
     for (let p = 30; p >= 0; p--) {
       const size = Math.pow(2, 32 - p);
       const usable = p >= 31 ? size : Math.max(0, size - 2);
-      if (usable >= seg.hosts) { prefix = p; blockSize = size; }
-      else break;
+      if (usable >= seg.hosts) { prefix = p; blockSize = size; break; }
     }
 
     // Align pointer to block boundary

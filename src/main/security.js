@@ -5,7 +5,6 @@ const IPV6_RE = /^[0-9a-fA-F:]+$/;
 const HOSTNAME_RE = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
 const CIDR_V4_RE = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
 const PORT_RE = /^\d{1,5}$/;
-const IFACE_RE = /^[a-zA-Z0-9\-_.]{1,32}$/;
 
 /**
  * Sanitize an IPv4 address.
@@ -68,33 +67,6 @@ function sanitizePort(port) {
 }
 
 /**
- * Sanitize a network interface name.
- * @param {string} iface
- * @returns {string}
- */
-function sanitizeIface(iface) {
-  if (typeof iface !== 'string') throw new Error('Interface must be a string');
-  const trimmed = iface.trim();
-  if (!IFACE_RE.test(trimmed)) throw new Error(`Invalid interface name: ${trimmed}`);
-  return trimmed;
-}
-
-/**
- * Sanitize a tcpdump/pcap filter expression.
- * Only printable ASCII, no shell metacharacters.
- * @param {string} filter
- * @returns {string}
- */
-function sanitizeFilter(filter) {
-  if (typeof filter !== 'string') throw new Error('Filter must be a string');
-  const trimmed = filter.trim();
-  // Allow alphanumeric, spaces, dots, slashes, colons, parens, and common BPF keywords
-  if (/[`$\\|;&<>!]/.test(trimmed)) throw new Error('Filter contains disallowed characters');
-  if (trimmed.length > 256) throw new Error('Filter expression too long');
-  return trimmed;
-}
-
-/**
  * Sanitize a URL (https only, no auth, no local).
  * @param {string} url
  * @returns {string}
@@ -118,4 +90,4 @@ function sanitizeURL(url) {
   return parsed.toString();
 }
 
-module.exports = { sanitizeIP, sanitizeHostname, sanitizeCIDR, sanitizePort, sanitizeIface, sanitizeFilter, sanitizeURL };
+module.exports = { sanitizeIP, sanitizeHostname, sanitizeCIDR, sanitizePort, sanitizeURL };

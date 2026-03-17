@@ -63,11 +63,74 @@ async function initAppInfo() {
   }
 }
 
+// ── Public IP ──────────────────────────────────────────────────────────
+async function fetchPublicIP() {
+  const APIS = [
+    { url: 'https://api.ipify.org?format=json', parse: d => d.ip },
+    { url: 'https://api4.my-ip.io/ip.json',     parse: d => d.ip },
+    { url: 'https://ipv4.icanhazip.com',         parse: d => d.trim() },
+  ];
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  for (const api of APIS) {
+    try {
+      const res = await fetch(api.url, { signal: controller.signal });
+      if (!res.ok) continue;
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('json') ? await res.json() : await res.text();
+      const ip = api.parse(data);
+      if (ip && /^[\d.]+$/.test(ip)) {
+        clearTimeout(timeout);
+        return ip;
+      }
+    } catch {
+      // try next
+    }
+  }
+  clearTimeout(timeout);
+  return null;
+}
+
+async function initPublicIP() {
+  const container = document.getElementById('topbar-public-ip');
+  const valueEl   = document.getElementById('topbar-ip-value');
+  if (!container || !valueEl) return;
+
+  const ip = await fetchPublicIP();
+
+  if (!ip) {
+    valueEl.textContent = 'offline';
+    container.classList.add('error');
+    container.title = 'Could not determine public IP';
+    return;
+  }
+
+  valueEl.textContent = ip;
+  container.title = `Public IP: ${ip} — click to copy`;
+
+  container.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(ip);
+      container.classList.add('copied');
+      valueEl.textContent = 'copied!';
+      setTimeout(() => {
+        container.classList.remove('copied');
+        valueEl.textContent = ip;
+      }, 1500);
+    } catch {
+      // clipboard not available
+    }
+  });
+}
+
 // ── Bootstrap ──────────────────────────────────────────────────────────
 async function boot() {
   initHamburger();
   await initAppInfo();
   startRouter();
+  initPublicIP(); // non-blocking — runs after UI is ready
 }
 
 boot().catch(err => {

@@ -1,52 +1,55 @@
 /* Net Architect — Jarvis Theme Variables */
 :root {
   /* ── Backgrounds ──────────────────────────────────────────────── */
-  --bg-void:      #020408;
-  --bg-dark:      #060d14;
-  --bg-panel:     #0a1520;
-  --bg-panel-alt: #0d1c2e;
-  --bg-elevated:  #112233;
-  --bg-hover:     #162840;
+  --bg-void:      #010609;
+  --bg-dark:      #050c14;
+  --bg-panel:     #091422;
+  --bg-panel-alt: #0c1a2c;
+  --bg-elevated:  #102035;
+  --bg-hover:     #152840;
+  --bg-glass:     rgba(9,20,34,0.85);
 
   /* ── Cyan Spectrum ────────────────────────────────────────────── */
-  --cyan-dim:    #0891b2;
+  --cyan-dim:    #0778a0;
   --cyan-base:   #06b6d4;
   --cyan-bright: #22d3ee;
   --cyan-ultra:  #67e8f9;
   --cyan-pale:   #a5f3fc;
 
   /* ── Accent Colors ────────────────────────────────────────────── */
-  --green-base:  #10b981;
-  --green-bright:#34d399;
-  --red-base:    #ef4444;
-  --red-bright:  #f87171;
-  --amber-base:  #f59e0b;
-  --amber-bright:#fcd34d;
-  --purple-base: #8b5cf6;
+  --green-base:   #059669;
+  --green-bright: #34d399;
+  --red-base:     #dc2626;
+  --red-bright:   #f87171;
+  --amber-base:   #d97706;
+  --amber-bright: #fcd34d;
+  --purple-base:  #7c3aed;
   --purple-bright:#a78bfa;
+  --blue-accent:  #3b82f6;
 
   /* ── Text ─────────────────────────────────────────────────────── */
-  --text-primary:  #e0f7fa;
-  --text-secondary:#94a3b8;
-  --text-muted:    #4a6a7a;
+  --text-primary:  #ddf4fa;
+  --text-secondary:#7fb3c8;
+  --text-muted:    #3d6478;
   --text-accent:   #22d3ee;
   --text-success:  #34d399;
   --text-warning:  #fcd34d;
   --text-error:    #f87171;
 
   /* ── Borders ──────────────────────────────────────────────────── */
-  --border-subtle:  rgba(6,182,212,0.12);
-  --border-normal:  rgba(6,182,212,0.25);
-  --border-strong:  rgba(6,182,212,0.5);
-  --border-glow:    rgba(6,182,212,0.8);
+  --border-subtle:  rgba(6,182,212,0.1);
+  --border-normal:  rgba(6,182,212,0.22);
+  --border-strong:  rgba(6,182,212,0.45);
+  --border-glow:    rgba(6,182,212,0.75);
 
   /* ── Glows ────────────────────────────────────────────────────── */
-  --glow-cyan-sm:  0 0 8px  rgba(6,182,212,0.4);
-  --glow-cyan-md:  0 0 15px rgba(6,182,212,0.5), 0 0 30px rgba(6,182,212,0.2);
-  --glow-cyan-lg:  0 0 25px rgba(6,182,212,0.6), 0 0 60px rgba(6,182,212,0.25);
-  --glow-green-sm: 0 0 8px  rgba(52,211,153,0.4);
-  --glow-red-sm:   0 0 8px  rgba(248,113,113,0.4);
-  --glow-text-cyan:0 0 10px rgba(6,182,212,0.8);
+  --glow-cyan-sm:   0 0 8px  rgba(6,182,212,0.4);
+  --glow-cyan-md:   0 0 18px rgba(6,182,212,0.5), 0 0 35px rgba(6,182,212,0.2);
+  --glow-cyan-lg:   0 0 28px rgba(6,182,212,0.6), 0 0 70px rgba(6,182,212,0.25);
+  --glow-green-sm:  0 0 8px  rgba(52,211,153,0.4);
+  --glow-red-sm:    0 0 8px  rgba(248,113,113,0.4);
+  --glow-text-cyan: 0 0 12px rgba(6,182,212,0.7);
+  --glow-panel:     0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(6,182,212,0.08);
 
   /* ── Typography ───────────────────────────────────────────────── */
   --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;

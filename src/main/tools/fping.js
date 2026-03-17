@@ -1,12 +1,14 @@
 'use strict';
 
-const net = require('net');
+const { spawn } = require('child_process');
+
+const IS_WIN = process.platform === 'win32';
+const CONCURRENCY = 25;
 
 /**
- * Bulk ping a CIDR range using concurrent TCP probes (port 7 or ICMP fallback via ping).
- * Uses Node.js net.Socket for platform-independent "reachability" testing.
+ * Bulk ping a CIDR range using the OS ping command for real ICMP probing.
  * @param {string} cidr - e.g. "192.168.1.0/24"
- * @param {Function} onProgress - called with { ip, alive, rtt }
+ * @param {Function} onProgress - called with { ip, alive, rtt, progress, total, completed }
  * @param {Function} onResult - called with { cidr, total, alive, results[] }
  * @returns {{ cancel: Function }}
  */
@@ -15,35 +17,28 @@ function runFping(cidr, onProgress, onResult) {
   const results = [];
   let cancelled = false;
   let completed = 0;
-  const CONCURRENCY = 50;
-  const TIMEOUT = 1500;
 
   function probeHost(ip) {
     return new Promise((resolve) => {
       if (cancelled) return resolve({ ip, alive: false, rtt: null });
 
       const start = Date.now();
-      const sock = new net.Socket();
-      let done = false;
+      const args = IS_WIN
+        ? ['-n', '1', '-w', '500', ip]
+        : ['-c', '1', '-W', '1', ip];
 
-      const finish = (alive) => {
-        if (done) return;
-        done = true;
-        sock.destroy();
-        const rtt = alive ? Date.now() - start : null;
+      const proc = spawn('ping', args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      let stdout = '';
+
+      proc.stdout.on('data', d => { stdout += d.toString(); });
+
+      proc.on('close', (code) => {
+        const alive = code === 0;
+        const rtt = alive ? (parseRTT(stdout) ?? (Date.now() - start)) : null;
         resolve({ ip, alive, rtt });
-      };
-
-      // Try port 80 (most likely open), fallback signal = host responded in any way
-      sock.setTimeout(TIMEOUT);
-      sock.connect(80, ip);
-      sock.on('connect', () => finish(true));
-      sock.on('timeout', () => finish(false));
-      sock.on('error', (err) => {
-        // Connection refused means host is up
-        if (err.code === 'ECONNREFUSED') finish(true);
-        else finish(false);
       });
+
+      proc.on('error', () => resolve({ ip, alive: false, rtt: null }));
     });
   }
 
@@ -78,9 +73,26 @@ function runFping(cidr, onProgress, onResult) {
 }
 
 /**
+ * Parse RTT from ping output.
+ * Windows: "time=12ms" or "Average = 12ms"
+ * Linux/Mac: "time=1.23 ms"
+ */
+function parseRTT(stdout) {
+  // Windows: "time=12ms" in reply line
+  const m1 = stdout.match(/time[<=](\d+)ms/i);
+  if (m1) return parseInt(m1[1]);
+  // Windows: "Average = 12ms"
+  const m2 = stdout.match(/Average\s*=\s*(\d+)ms/i);
+  if (m2) return parseInt(m2[1]);
+  // Linux/Mac: "time=1.23 ms"
+  const m3 = stdout.match(/time[<=]([\d.]+)\s*ms/i);
+  if (m3) return Math.round(parseFloat(m3[1]));
+  return null;
+}
+
+/**
  * Expand a CIDR block into an array of host IP strings.
- * Skips network and broadcast addresses for /24 and smaller.
- * Max 1024 hosts to prevent abuse.
+ * Skips network and broadcast addresses. Max 1024 hosts.
  */
 function expandCIDR(cidr) {
   const [base, prefix] = cidr.split('/');
@@ -96,7 +108,6 @@ function expandCIDR(cidr) {
 
   for (let i = 0; i < limit; i++) {
     const ip = (network + i) >>> 0;
-    // Skip network (i=0) and broadcast (i=total-1) for prefix <= 30
     if (pfx <= 30 && (i === 0 || i === total - 1)) continue;
     hosts.push(longToIP(ip));
   }

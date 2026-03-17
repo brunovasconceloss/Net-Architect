@@ -122,6 +122,53 @@ function isPrivateIP(ipLong) {
 }
 
 /**
+ * Split a CIDR prefix into subnets of a given target prefix length.
+ * @param {string} cidr - e.g. "192.168.0.0/16"
+ * @param {number} targetPrefix - e.g. 24
+ * @returns {{ subnets: Array, total: number, shown: number }}
+ */
+export function splitPrefix(cidr, targetPrefix) {
+  const [ipPart, prefixPart] = cidr.trim().split('/');
+  if (!validateIPv4(ipPart)) throw new Error(`Invalid IPv4: ${ipPart}`);
+
+  const srcPrefix = parseInt(prefixPart, 10);
+  targetPrefix = parseInt(targetPrefix, 10);
+
+  if (isNaN(targetPrefix) || targetPrefix < 0 || targetPrefix > 32) throw new Error(`Invalid target prefix: /${targetPrefix}`);
+  if (targetPrefix <= srcPrefix) throw new Error(`Target /${targetPrefix} must be longer than source /${srcPrefix}`);
+  if (targetPrefix > 30) throw new Error('Target prefix must be /30 or smaller for usable hosts');
+
+  const ipLong = ipToLong(ipPart);
+  const srcMaskLong = srcPrefix === 0 ? 0 : (~0 << (32 - srcPrefix)) >>> 0;
+  const networkStart = (ipLong & srcMaskLong) >>> 0;
+  const tgtMaskLong = (~0 << (32 - targetPrefix)) >>> 0;
+
+  const totalSubnets = Math.pow(2, targetPrefix - srcPrefix);
+  const subnetSize = Math.pow(2, 32 - targetPrefix);
+  const usablePerSubnet = Math.max(0, subnetSize - 2);
+
+  const limit = Math.min(totalSubnets, 4096);
+  const subnets = [];
+
+  for (let i = 0; i < limit; i++) {
+    const netLong = (networkStart + i * subnetSize) >>> 0;
+    const bcastLong = (netLong + subnetSize - 1) >>> 0;
+    subnets.push({
+      index: i + 1,
+      cidr: `${longToIP(netLong)}/${targetPrefix}`,
+      networkAddress: longToIP(netLong),
+      broadcastAddress: longToIP(bcastLong),
+      subnetMask: longToIP(tgtMaskLong),
+      firstHost: longToIP(netLong + 1),
+      lastHost: longToIP(bcastLong - 1),
+      usableHosts: usablePerSubnet,
+    });
+  }
+
+  return { subnets, total: totalSubnets, shown: limit };
+}
+
+/**
  * Calculate subnet information for a given number of hosts needed.
  * Returns the smallest prefix that fits `hosts` usable hosts.
  * @param {number} hosts

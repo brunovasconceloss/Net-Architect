@@ -10,7 +10,7 @@ Unified offline tool combining:
 - IPv4/IPv6 subnet calculation + VLSM planning
 - Network topology visualization (ASCII + SVG)
 - Config generation (Cisco, Juniper, Huawei)
-- Real OS-level network testing (ping, traceroute, fping, TCP ping, tcpdump, HTTP, iPerf3)
+- Real OS-level network testing (ping, traceroute, fping, TCP ping, HTTP, iPerf3)
 
 **Repo:** https://github.com/brunovasconceloss/Net-Architect.git
 
@@ -52,7 +52,6 @@ net_architect/
 │   │       ├── traceroute.js
 │   │       ├── fping.js
 │   │       ├── tcpping.js
-│   │       ├── tcpdump.js
 │   │       ├── http-tools.js
 │   │       └── iperf.js
 │   └── renderer/
@@ -97,12 +96,22 @@ net_architect/
 | `#planning` | Planning | Subnet Calculator IPv4/IPv6 + VLSM Planner |
 | `#architecture` | Architecture | Network Visualizer (ASCII/SVG tree) |
 | `#tools` | Tools | Config Generator + Export |
-| `#testing` | Testing | Ping, Traceroute, Bulk Ping, TCP Ping, Capture, HTTP, iPerf3 |
+| `#testing` | Testing | Ping, Traceroute, Bulk Ping, TCP Ping, HTTP, iPerf3 |
 | `#about` | About | App info, this file |
 
 ---
 
 ## Changelog
+
+### v1.1.0 — 2026-03-17
+- `feat: subnet calculator — split prefix into smaller masks with copy/export`
+- `fix: bulk ping rewritten to use OS ping command (was TCP socket, missed ICMP-only hosts)`
+- `fix: iperf "session already active" error — added finished flag + error handler`
+- `fix: VLSM planner always returned /30 — loop break condition was inverted`
+- `feat: public IP badge in topbar with click-to-copy`
+- `fix: CSP connect-src to allow public IP lookup APIs`
+- `refactor: UI theme — darker panels, gradient buttons, dot-grid background`
+- `remove: Packet Capture tab (WinDump incompatible with Npcap 1.60+)`
 
 ### v1.0.0 — 2026-03-16
 - `feat: project foundation - electron shell + jarvis theme`
@@ -110,5 +119,5 @@ net_architect/
 - `feat: reusable UI components`
 - `feat: client-side views - planning, architecture, tools, about`
 - `feat: IPC security layer`
-- `feat: network testing tools - ping, mtr, fping, tcpping, tcpdump, http, iperf3`
+- `feat: network testing tools - ping, mtr, fping, tcpping, http, iperf3`
 - `feat: packaging, icons, documentation`

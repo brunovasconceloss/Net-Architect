@@ -21,7 +21,7 @@ function startClient(host, port, duration, onData, onResult) {
     '-c', host,
     '-p', String(port),
     '-t', String(safeDuration),
-    '-J', // JSON output
+    '-J',
     '--forceflush',
   ];
 
@@ -45,11 +45,26 @@ function startServer(port, onData, onResult) {
 
 function collectIperfOutput(onData, onResult) {
   const chunks = [];
+  let finished = false;
+
+  const finish = (result) => {
+    if (finished) return;
+    finished = true;
+    activeProc = null;
+    onResult(result);
+  };
+
+  activeProc.on('error', (err) => {
+    const msg = err.code === 'ENOENT'
+      ? 'iperf3 not found. Install iperf3 and ensure it is in your PATH.'
+      : `iPerf3 error: ${err.message}`;
+    onData({ line: msg, error: true, timestamp: Date.now() });
+    finish({ success: false, error: msg });
+  });
 
   activeProc.stdout.setEncoding('utf8');
   activeProc.stdout.on('data', (chunk) => {
     chunks.push(chunk);
-    // Stream partial lines to UI
     chunk.split('\n').forEach(line => {
       if (line.trim()) onData({ line: line.trim(), timestamp: Date.now() });
     });
@@ -61,13 +76,12 @@ function collectIperfOutput(onData, onResult) {
   });
 
   activeProc.on('close', () => {
-    activeProc = null;
     const raw = chunks.join('');
     try {
       const parsed = JSON.parse(raw);
-      onResult({ success: true, data: summarizeIperf(parsed), raw: parsed });
+      finish({ success: true, data: summarizeIperf(parsed), raw: parsed });
     } catch {
-      onResult({ success: false, raw, error: 'Failed to parse iPerf3 output' });
+      finish({ success: false, raw, error: 'Failed to parse iPerf3 output' });
     }
   });
 }
