@@ -1,8 +1,6 @@
 /**
- * About view — App information, version, and CLAUDE.md content.
+ * About view — App information and features.
  */
-
-import { showToast } from '../components/notification.js';
 
 export function render() {
   const el = document.createElement('div');
@@ -13,7 +11,7 @@ export function render() {
       <p class="page-subtitle">Net Architect — The Network Engineer's Partner</p>
     </div>
 
-    <div class="grid-2" style="margin-bottom:var(--space-lg)">
+    <div class="grid-2">
       <div class="panel scan-container">
         <p class="panel-title">Application Info</p>
         <table class="data-table">
@@ -22,7 +20,6 @@ export function render() {
             <tr><td style="color:var(--text-secondary)">Platform</td><td id="about-platform">—</td></tr>
             <tr><td style="color:var(--text-secondary)">Engine</td><td>Electron + Chromium</td></tr>
             <tr><td style="color:var(--text-secondary)">Stack</td><td>Vanilla JS ES2022, No bundler</td></tr>
-            <tr><td style="color:var(--text-secondary)">Theme</td><td>Jarvis / Iron Man Dark</td></tr>
             <tr><td style="color:var(--text-secondary)">Author</td><td>Bruno Vasconcelos</td></tr>
             <tr><td style="color:var(--text-secondary)">License</td><td>MIT</td></tr>
           </tbody>
@@ -37,10 +34,9 @@ export function render() {
             ['VLSM Planner', 'cyan'],
             ['Network Topology Visualizer (ASCII + SVG)', 'green'],
             ['Config Generator (Cisco / Juniper / Huawei)', 'green'],
-            ['Ping & Traceroute', 'amber'],
+            ['Ping & MTR (route analysis)', 'amber'],
             ['Bulk Ping (CIDR sweep)', 'amber'],
             ['TCP Ping', 'amber'],
-            ['Packet Capture (tcpdump)', 'amber'],
             ['HTTP & DNS Diagnostics', 'amber'],
             ['iPerf3 Bandwidth Testing', 'amber'],
           ].map(([label, color]) => `
@@ -50,16 +46,6 @@ export function render() {
             </li>
           `).join('')}
         </ul>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <p class="panel-title" style="margin:0">CLAUDE.md</p>
-        <span style="font-size:0.72rem;color:var(--text-muted);font-family:var(--font-mono)">Auto-updated with each release</span>
-      </div>
-      <div class="terminal" id="claude-md-content" style="max-height:500px;white-space:pre-wrap;user-select:text">
-        <span style="color:var(--text-muted)">Loading...</span>
       </div>
     </div>
   `;
@@ -75,18 +61,9 @@ export function render() {
       const el2 = el.querySelector('#about-platform');
       if (el2) el2.textContent = p;
     }).catch(() => {});
-
-    window.netAPI.app.getClaudemd().then(content => {
-      const el2 = el.querySelector('#claude-md-content');
-      if (el2) el2.textContent = content;
-    }).catch(err => {
-      const el2 = el.querySelector('#claude-md-content');
-      if (el2) el2.textContent = `Error loading CLAUDE.md: ${err.message}`;
-    });
   } else {
     el.querySelector('#about-version').textContent = '(dev mode)';
     el.querySelector('#about-platform').textContent = navigator.platform;
-    el.querySelector('#claude-md-content').textContent = 'Running outside Electron — CLAUDE.md not available.';
   }
 
   return el;

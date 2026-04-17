@@ -1,15 +1,14 @@
 'use strict';
 
 const { ipcMain, app, BrowserWindow } = require('electron');
-const path = require('path');
-const fs = require('fs');
 const security = require('./security');
 const ping = require('./tools/ping');
-const traceroute = require('./tools/traceroute');
+const mtr = require('./tools/mtr');
 const fping = require('./tools/fping');
 const tcpping = require('./tools/tcpping');
 const httpTools = require('./tools/http-tools');
 const iperf = require('./tools/iperf');
+const geo = require('./tools/geo');
 
 function getMainWindow() {
   return BrowserWindow.getAllWindows()[0] || null;
@@ -24,11 +23,6 @@ function register() {
   // ── App info ────────────────────────────────────────────────────────
   ipcMain.handle('app:getVersion', () => app.getVersion());
   ipcMain.handle('app:getPlatform', () => process.platform);
-  ipcMain.handle('app:getClaudemd', () => {
-    const p = path.join(app.getAppPath(), 'CLAUDE.md');
-    try { return fs.readFileSync(p, 'utf8'); } catch { return '# CLAUDE.md not found'; }
-  });
-
   // ── Ping ────────────────────────────────────────────────────────────
   ipcMain.handle('ping:run', (_e, host, count) => {
     const safeHost = security.sanitizeHostname(host);
@@ -43,14 +37,16 @@ function register() {
     });
   });
 
-  // ── Traceroute ──────────────────────────────────────────────────────
-  ipcMain.handle('traceroute:run', (_e, host) => {
+  // ── MTR ─────────────────────────────────────────────────────────────
+  ipcMain.handle('mtr:run', (_e, host, packets) => {
     const safeHost = security.sanitizeHostname(host);
+    const safePkts = Math.max(10, Math.min(200, parseInt(packets) || 50));
     return new Promise((resolve) => {
-      traceroute.runTraceroute(
+      mtr.runMTR(
         safeHost,
-        (data) => send('traceroute:data', data),
-        (result) => { send('traceroute:result', result); resolve(result); }
+        safePkts,
+        (data) => send('mtr:data', data),
+        (result) => { send('mtr:result', result); resolve(result); }
       );
     });
   });
@@ -84,7 +80,9 @@ function register() {
 
   // ── HTTP / DNS ──────────────────────────────────────────────────────
   ipcMain.handle('http:request', async (_e, url, method) => {
-    const safeURL = security.sanitizeURL(url);
+    let normalizedUrl = (url || '').trim();
+    if (!/^https?:\/\//i.test(normalizedUrl)) normalizedUrl = 'https://' + normalizedUrl;
+    const safeURL = security.sanitizeURL(normalizedUrl);
     return httpTools.httpRequest(safeURL, method || 'GET');
   });
 
@@ -124,6 +122,21 @@ function register() {
   ipcMain.handle('iperf:stop', () => {
     iperf.stopIperf();
     return { stopped: true };
+  });
+
+  // ── Geo Lookup ──────────────────────────────────────────────────────
+  ipcMain.handle('geo:lookup', async (_e, ip) => {
+    const safeIP = security.sanitizeHostname(ip);
+    return geo.geoLookup(safeIP);
+  });
+
+  ipcMain.handle('geo:batch', async (_e, ips) => {
+    if (!Array.isArray(ips)) return [];
+    const safeIPs = ips
+      .filter(ip => typeof ip === 'string' && ip.trim().length > 0)
+      .map(ip => ip.trim())
+      .slice(0, 100);
+    return geo.geoBatch(safeIPs);
   });
 }
 

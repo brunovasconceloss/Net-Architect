@@ -1,6 +1,6 @@
 # Net Architect — CLAUDE.md
 
-> Auto-updated with each feature commit. Read by the About view via IPC `app:getClaudemd`.
+> Auto-updated with each feature commit.
 
 ## Project Overview
 **Net Architect** is a desktop Electron application for network engineers and administrators.
@@ -10,7 +10,7 @@ Unified offline tool combining:
 - IPv4/IPv6 subnet calculation + VLSM planning
 - Network topology visualization (ASCII + SVG)
 - Config generation (Cisco, Juniper, Huawei)
-- Real OS-level network testing (ping, traceroute, fping, TCP ping, HTTP, iPerf3)
+- Real OS-level network testing (ping, MTR, fping, TCP ping, HTTP, iPerf3)
 
 **Repo:** https://github.com/brunovasconceloss/Net-Architect.git
 
@@ -19,7 +19,7 @@ Unified offline tool combining:
 ## Tech Stack
 - **Electron 28+** — main process calls OS tools via `child_process`
 - **Vanilla JS ES2022** — no framework, no bundler; native ES modules in Chromium
-- **CSS Custom Properties** — Jarvis/Iron Man futuristic dark theme
+- **CSS Custom Properties** — neutral charcoal dark theme (Linear/Vercel inspired)
 - **electron-builder** — packages for Windows (.exe), macOS (.dmg), Linux (.AppImage)
 
 ---
@@ -49,11 +49,12 @@ net_architect/
 │   │   ├── security.js
 │   │   └── tools/
 │   │       ├── ping.js
-│   │       ├── traceroute.js
+│   │       ├── mtr.js
 │   │       ├── fping.js
 │   │       ├── tcpping.js
 │   │       ├── http-tools.js
-│   │       └── iperf.js
+│   │       ├── iperf.js
+│   │       └── geo.js
 │   └── renderer/
 │       ├── index.html
 │       ├── app.js
@@ -96,12 +97,22 @@ net_architect/
 | `#planning` | Planning | Subnet Calculator IPv4/IPv6 + VLSM Planner |
 | `#architecture` | Architecture | Network Visualizer (ASCII/SVG tree) |
 | `#tools` | Tools | Config Generator + Export |
-| `#testing` | Testing | Ping, Traceroute, Bulk Ping, TCP Ping, HTTP, iPerf3 |
-| `#about` | About | App info, this file |
+| `#testing` | Testing | Ping, MTR, Bulk Ping, TCP Ping, HTTP/DNS, IP Lookup, iPerf3 |
+| `#about` | About | App info |
 
 ---
 
 ## Changelog
+
+### v1.3.0 — 2026-04-17
+- `feat: IP Geolocation — new IP Lookup tab (country, region, city, ISP, ASN, coordinates, timezone)`
+- `feat: MTR — Location column with per-hop geo enrichment via batch lookup after completion`
+
+### v1.2.0 — 2026-04-17
+- `feat: MTR replaces Traceroute — per-hop statistics (loss%, sent, recv, last/avg/best/worst ms)`
+- `feat: HTTP/DNS auto-prefix https:// when protocol is omitted`
+- `fix: About — removed Theme row and CLAUDE.md integration`
+- `refactor: UI design refresh — lighter backgrounds, glassmorphism panels, reduced glow intensity`
 
 ### v1.1.0 — 2026-03-17
 - `feat: subnet calculator — split prefix into smaller masks with copy/export`

@@ -56,10 +56,10 @@ jobs:
             - VLSM Planner
             - Network Topology Visualizer (ASCII + SVG)
             - Config Generator (Cisco, Juniper, Huawei)
-            - Network Testing: Ping, Traceroute, Bulk Ping, TCP Ping, HTTP/DNS, iPerf3
+            - Network Testing: Ping, MTR (per-hop stats), Bulk Ping, TCP Ping, HTTP/DNS, IP Geolocation, iPerf3
 
             ### Installation
-            Download `Net-Architect-Setup-*.exe` below and run it. No internet required after install.
+            Download `Net-Architect-Setup-*.exe` below and run it. No internet required after install (except IP Geolocation lookup).
 
             > ⚠️ Windows may show a SmartScreen warning (unsigned app). Click **"More info → Run anyway"** to proceed.
           files: dist/*.exe

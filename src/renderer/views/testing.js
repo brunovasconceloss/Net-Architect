@@ -19,10 +19,11 @@ export function render() {
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="ping">Ping</button>
-      <button class="tab-btn" data-tab="traceroute">Traceroute</button>
+      <button class="tab-btn" data-tab="traceroute">MTR</button>
       <button class="tab-btn" data-tab="bulk-ping">Bulk Ping</button>
       <button class="tab-btn" data-tab="tcp-ping">TCP Ping</button>
       <button class="tab-btn" data-tab="http-dns">HTTP / DNS</button>
+      <button class="tab-btn" data-tab="ip-lookup">IP Lookup</button>
       <button class="tab-btn" data-tab="iperf">iPerf3</button>
     </div>
 
@@ -41,6 +42,9 @@ export function render() {
     <!-- HTTP / DNS -->
     <div class="tab-panel" id="tab-http-dns"></div>
 
+    <!-- IP Lookup -->
+    <div class="tab-panel" id="tab-ip-lookup"></div>
+
     <!-- iPerf3 -->
     <div class="tab-panel" id="tab-iperf"></div>
   `;
@@ -56,10 +60,11 @@ export function render() {
   });
 
   buildPingTab(el.querySelector('#tab-ping'));
-  buildTracerouteTab(el.querySelector('#tab-traceroute'));
+  buildMTRTab(el.querySelector('#tab-traceroute'));
   buildBulkPingTab(el.querySelector('#tab-bulk-ping'));
   buildTCPPingTab(el.querySelector('#tab-tcp-ping'));
   buildHTTPDNSTab(el.querySelector('#tab-http-dns'));
+  buildIPLookupTab(el.querySelector('#tab-ip-lookup'));
   buildIperfTab(el.querySelector('#tab-iperf'));
 
   return el;
@@ -152,62 +157,168 @@ function buildPingTab(container) {
   });
 }
 
-// ── Traceroute Tab ────────────────────────────────────────────────────
-function buildTracerouteTab(container) {
-  const term = new TerminalOutput();
-  const table = new ResultsTable([
-    { key: 'hop', label: 'Hop' },
-    { key: 'address', label: 'Address' },
-    { key: 'avg', label: 'Avg ms', render: v => v != null ? `${v}` : '*' },
-  ]);
+// ── MTR Tab ───────────────────────────────────────────────────────────
+function buildMTRTab(container) {
+  const progress = new ProgressBar();
 
   container.innerHTML = `
     <div class="panel" style="margin-bottom:var(--space-md)">
-      <p class="panel-title">Traceroute</p>
-      <div style="display:flex;gap:8px;align-items:flex-end">
+      <p class="panel-title">MTR — My Traceroute</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
         <div class="form-group" style="flex:1;margin:0">
           <label class="form-label">Host / IP</label>
-          <input class="form-input" id="tr-host" placeholder="8.8.8.8" value="8.8.8.8">
+          <input class="form-input" id="mtr-host" placeholder="8.8.8.8" value="8.8.8.8">
         </div>
-        <button class="btn btn-primary" id="tr-run-btn">RUN TRACEROUTE</button>
+        <div class="form-group" style="width:100px;margin:0">
+          <label class="form-label">Packets</label>
+          <input class="form-input" id="mtr-packets" type="number" value="50" min="10" max="200">
+        </div>
+        <button class="btn btn-primary" id="mtr-run-btn">RUN MTR</button>
       </div>
+      <div id="mtr-progress-mount"></div>
+      <div id="mtr-status" style="margin-top:6px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted)"></div>
     </div>
-    <div class="grid-2">
-      <div class="panel">
-        <p class="panel-title">Hops Table</p>
-        <div id="tr-table-mount"></div>
-      </div>
-      <div class="panel">
-        <p class="panel-title">Raw Output</p>
-        <div id="tr-terminal-mount"></div>
+    <div class="panel">
+      <p class="panel-title">Route Statistics</p>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="mtr-table">
+          <thead>
+            <tr>
+              <th style="width:48px">Hop</th>
+              <th>Address</th>
+              <th style="width:70px">Loss%</th>
+              <th style="width:55px">Sent</th>
+              <th style="width:55px">Recv</th>
+              <th style="width:70px">Last ms</th>
+              <th style="width:70px">Avg ms</th>
+              <th style="width:70px">Best ms</th>
+              <th style="width:70px">Worst ms</th>
+              <th style="min-width:140px">Location</th>
+            </tr>
+          </thead>
+          <tbody id="mtr-tbody"></tbody>
+        </table>
       </div>
     </div>
   `;
 
-  container.querySelector('#tr-terminal-mount').appendChild(term.el);
-  container.querySelector('#tr-table-mount').appendChild(table.el);
+  container.querySelector('#mtr-progress-mount').appendChild(progress.el);
 
-  container.querySelector('#tr-run-btn').addEventListener('click', async () => {
+  // Map from hop number → <tr> element for live updates
+  const rowMap = {};
+
+  function getOrCreateRow(hop, address) {
+    if (rowMap[hop]) return rowMap[hop];
+    const tbody = container.querySelector('#mtr-tbody');
+    const tr = document.createElement('tr');
+    tr.dataset.hop = hop;
+    tr.innerHTML = `
+      <td>${hop}</td>
+      <td style="font-family:var(--font-mono)">${escapeHTML(address)}</td>
+      <td id="mtr-loss-${hop}">—</td>
+      <td id="mtr-sent-${hop}">—</td>
+      <td id="mtr-recv-${hop}">—</td>
+      <td id="mtr-last-${hop}">—</td>
+      <td id="mtr-avg-${hop}">—</td>
+      <td id="mtr-best-${hop}">—</td>
+      <td id="mtr-worst-${hop}">—</td>
+      <td id="mtr-loc-${hop}" style="color:var(--text-muted);font-size:0.8em">—</td>
+    `;
+    tbody.appendChild(tr);
+    rowMap[hop] = tr;
+    return tr;
+  }
+
+  function updateRowStats(data) {
+    const tr = rowMap[data.hop];
+    if (!tr) return;
+
+    const fmt = v => v != null ? String(v) : '—';
+
+    tr.querySelector(`#mtr-loss-${data.hop}`).textContent  = data.sent > 0 ? `${data.loss}%` : '—';
+    tr.querySelector(`#mtr-sent-${data.hop}`).textContent  = fmt(data.sent);
+    tr.querySelector(`#mtr-recv-${data.hop}`).textContent  = fmt(data.recv);
+    tr.querySelector(`#mtr-last-${data.hop}`).textContent  = fmt(data.last);
+    tr.querySelector(`#mtr-avg-${data.hop}`).textContent   = fmt(data.avg);
+    tr.querySelector(`#mtr-best-${data.hop}`).textContent  = fmt(data.best);
+    tr.querySelector(`#mtr-worst-${data.hop}`).textContent = fmt(data.worst);
+
+    // Color-code by loss%
+    tr.style.color = '';
+    if (data.loss >= 50) {
+      tr.style.color = 'var(--text-error)';
+    } else if (data.loss > 0) {
+      tr.style.color = 'var(--text-warning)';
+    } else if (data.recv > 0) {
+      tr.style.color = 'var(--text-success)';
+    }
+  }
+
+  const statusEl = container.querySelector('#mtr-status');
+  let totalHops = 0;
+
+  container.querySelector('#mtr-run-btn').addEventListener('click', async () => {
     if (!hasAPI()) { noAPIMsg(container); return; }
-    const host = container.querySelector('#tr-host').value.trim();
+    const host    = container.querySelector('#mtr-host').value.trim();
+    const packets = parseInt(container.querySelector('#mtr-packets').value) || 50;
     if (!host) { showToast('Enter a host', 'warning'); return; }
 
-    term.clear(); table.clear();
-    term.append(`Traceroute to ${host}...`, 'muted');
+    // Reset UI
+    container.querySelector('#mtr-tbody').innerHTML = '';
+    Object.keys(rowMap).forEach(k => delete rowMap[k]);
+    progress.reset();
+    statusEl.textContent = '';
+    statusEl.style.color = '';
+    totalHops = 0;
 
-    const removeData = window.netAPI.traceroute.onData(({ hop, line, error }) => {
-      term.append(line, error ? 'error' : 'default');
-      if (hop) table.addRow(hop);
+    const removeData = window.netAPI.mtr.onData((data) => {
+      if (data.phase === 'discovery') {
+        if (data.message) {
+          statusEl.textContent = data.message;
+        } else if (data.hop != null) {
+          getOrCreateRow(data.hop, data.address);
+          statusEl.textContent = `Discovering hops... found ${data.hop}`;
+          progress.set(10, `Hop ${data.hop}`);
+        }
+      } else if (data.phase === 'pinging') {
+        totalHops = data.total;
+        statusEl.textContent = `Pinging ${data.total} hops (${data.packets} packets each)...`;
+        progress.set(15, '');
+      } else if (data.phase === 'stats') {
+        updateRowStats(data);
+        // Approximate progress: use the current hop's sent count as a proxy
+        if (packets > 0) {
+          const pct = Math.min(99, 15 + Math.round((data.sent / packets) * 84));
+          progress.set(pct, data.address);
+        }
+      }
     });
-    const removeResult = window.netAPI.traceroute.onResult(({ hops }) => {
+
+    const removeResult = window.netAPI.mtr.onResult(({ hops, error }) => {
       removeData(); removeResult();
-      term.append(`\nTrace complete. ${hops.length} hops.`, 'muted');
+      progress.set(100, 'Complete');
+      if (error) {
+        statusEl.textContent = `Error: ${error}`;
+        statusEl.style.color = 'var(--text-error)';
+      } else {
+        statusEl.textContent = `MTR complete — ${hops.length} hops`;
+        statusEl.style.color = 'var(--text-success)';
+        // Final update for all hops (fills in any hops that had no ping data)
+        hops.forEach(h => {
+          if (!rowMap[h.hop]) getOrCreateRow(h.hop, h.address);
+          updateRowStats(h);
+        });
+        // Geo enrich all hops
+        enrichMTRWithGeo(hops, container);
+      }
     });
 
     try {
-      await window.netAPI.traceroute.run(host);
+      await window.netAPI.mtr.run(host, packets);
     } catch (err) {
-      term.append(`Error: ${err.message}`, 'error');
+      removeData(); removeResult();
+      statusEl.textContent = `Error: ${err.message}`;
+      statusEl.style.color = 'var(--text-error)';
     }
   });
 }
@@ -575,6 +686,134 @@ function buildIperfTab(container) {
       showToast(err.message, 'error');
     }
   });
+}
+
+// ── MTR Geo Enrichment ────────────────────────────────────────────────
+async function enrichMTRWithGeo(hops, container) {
+  if (!hasAPI() || !window.netAPI.geo) return;
+  const validHops = hops.filter(h => h.address && h.address !== '*');
+  if (validHops.length === 0) return;
+
+  try {
+    const results = await window.netAPI.geo.batch(validHops.map(h => h.address));
+    if (!Array.isArray(results)) return;
+
+    const geoMap = {};
+    results.forEach(g => { if (g && g.query) geoMap[g.query] = g; });
+
+    validHops.forEach(h => {
+      const cell = container.querySelector(`#mtr-loc-${h.hop}`);
+      if (!cell) return;
+      const g = geoMap[h.address];
+      if (!g || g.status !== 'success') {
+        cell.textContent = g?.message === 'private range' ? 'Private' : '—';
+      } else {
+        const flag = countryFlag(g.countryCode);
+        cell.textContent = `${flag} ${g.city}, ${g.countryCode}`;
+        cell.title = `${g.country} · ${g.isp} · ${g.as}`;
+        cell.style.color = 'var(--text-secondary)';
+      }
+    });
+  } catch { /* silently ignore geo errors */ }
+}
+
+// ── IP Lookup Tab ─────────────────────────────────────────────────────
+function buildIPLookupTab(container) {
+  container.innerHTML = `
+    <div class="grid-2">
+      <div class="panel">
+        <p class="panel-title">IP Geolocation</p>
+        <div class="form-group">
+          <label class="form-label">IP Address or Hostname</label>
+          <input class="form-input" id="geo-ip" placeholder="8.8.8.8" value="8.8.8.8">
+        </div>
+        <button class="btn btn-primary" id="geo-run-btn" style="width:100%">LOOKUP</button>
+        <p style="margin-top:10px;font-size:0.72rem;color:var(--text-muted)">
+          Powered by ip-api.com · Requires internet
+        </p>
+      </div>
+
+      <div class="panel" id="geo-result-panel">
+        <p class="panel-title">Result</p>
+        <div id="geo-result" style="color:var(--text-muted);font-size:0.85rem">
+          Enter an IP or hostname and click Lookup.
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.querySelector('#geo-run-btn').addEventListener('click', async () => {
+    if (!hasAPI()) { noAPIMsg(container); return; }
+    const ip = container.querySelector('#geo-ip').value.trim();
+    if (!ip) { showToast('Enter an IP or hostname', 'warning'); return; }
+
+    const resultEl = container.querySelector('#geo-result');
+    resultEl.innerHTML = '<div class="spinner" style="margin:16px auto"></div>';
+
+    try {
+      const g = await window.netAPI.geo.lookup(ip);
+
+      if (!g || g.status !== 'success') {
+        const msg = g?.message || 'Unknown error';
+        resultEl.innerHTML = `<p style="color:var(--text-error)">${escapeHTML(msg === 'private range' ? 'Private/reserved IP range' : `Lookup failed: ${msg}`)}</p>`;
+        return;
+      }
+
+      const flag = countryFlag(g.countryCode);
+      resultEl.innerHTML = `
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <td style="color:var(--text-muted)">IP</td>
+              <td style="font-family:var(--font-mono)">${escapeHTML(g.query)}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">Country</td>
+              <td>${flag} ${escapeHTML(g.country)} <span style="color:var(--text-muted)">(${escapeHTML(g.countryCode)})</span></td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">Region</td>
+              <td>${escapeHTML(g.regionName || '—')}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">City</td>
+              <td>${escapeHTML(g.city || '—')}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">ISP</td>
+              <td>${escapeHTML(g.isp || '—')}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">Organization</td>
+              <td>${escapeHTML(g.org || '—')}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">ASN</td>
+              <td style="font-family:var(--font-mono)">${escapeHTML(g.as || '—')}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">Coordinates</td>
+              <td style="font-family:var(--font-mono)">${g.lat}, ${g.lon}</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted)">Timezone</td>
+              <td>${escapeHTML(g.timezone || '—')}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    } catch (err) {
+      resultEl.innerHTML = `<p style="color:var(--text-error)">${escapeHTML(err.message)}</p>`;
+    }
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function countryFlag(code) {
+  if (!code || code.length !== 2) return '';
+  return [...code.toUpperCase()]
+    .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
+    .join('');
 }
 
 function escapeHTML(str) {

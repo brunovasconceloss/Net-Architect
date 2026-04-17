@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld('netAPI', {
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
-    getClaudemd: () => ipcRenderer.invoke('app:getClaudemd'),
   },
 
   // Ping
@@ -26,18 +25,18 @@ contextBridge.exposeInMainWorld('netAPI', {
     },
   },
 
-  // Traceroute
-  traceroute: {
-    run: (host) => ipcRenderer.invoke('traceroute:run', host),
+  // MTR (route analysis with per-hop statistics)
+  mtr: {
+    run: (host, packets) => ipcRenderer.invoke('mtr:run', host, packets),
     onData: (cb) => {
       const handler = (_e, data) => cb(data);
-      ipcRenderer.on('traceroute:data', handler);
-      return () => ipcRenderer.removeListener('traceroute:data', handler);
+      ipcRenderer.on('mtr:data', handler);
+      return () => ipcRenderer.removeListener('mtr:data', handler);
     },
     onResult: (cb) => {
       const handler = (_e, data) => cb(data);
-      ipcRenderer.on('traceroute:result', handler);
-      return () => ipcRenderer.removeListener('traceroute:result', handler);
+      ipcRenderer.on('mtr:result', handler);
+      return () => ipcRenderer.removeListener('mtr:result', handler);
     },
   },
 
@@ -72,6 +71,12 @@ contextBridge.exposeInMainWorld('netAPI', {
   },
   dns: {
     query: (host, type) => ipcRenderer.invoke('dns:query', host, type),
+  },
+
+  // Geo Lookup
+  geo: {
+    lookup: (ip) => ipcRenderer.invoke('geo:lookup', ip),
+    batch: (ips) => ipcRenderer.invoke('geo:batch', ips),
   },
 
   // iPerf3
